@@ -151,7 +151,7 @@ static void arrive(int id)
         exit (EXIT_FAILURE);
     }
 
-    usleep((80.0*random())/(RAND_MAX+1.0)+60.0);  //5000000.0
+    usleep((8000000.0*random())/(RAND_MAX+1.0)+60.0);  //8000000.0
 }
 
 /**
@@ -177,48 +177,73 @@ static int goalieConstituteTeam (int id)                    //Late goaliesArrive
         perror ("error on the up operation for semaphore access (GL)");
         exit (EXIT_FAILURE);
     }
-    printf("Golie Entrou %d\n",id);
-    fflush(stdout);
 
     if (sh->fSt.goaliesFree >= 2) {
         sh->fSt.st.goalieStat[id] = LATE;
         saveState(nFic, &sh->fSt);
-        printf("Golie Saiu %d\n",id);
-        fflush(stdout);
         semUp(semgid, sh->mutex);
         return 0;
     }
 
-        sh->fSt.goaliesFree+=1;
 
         if (sh->fSt.playersArrived < NUMTEAMPLAYERS) {
+            sh->fSt.goaliesFree+=1;
+            printf("Waiting %d\n",id);
+            fflush(stdout);
+
             sh->fSt.st.goalieStat[id] = WAITING_TEAM;
             saveState(nFic, &sh->fSt);
-
             semUp (semgid, sh->mutex);
-            semDown(semgid, sh->goaliesWaitTeam);
-            printf("Golie UP %d\n",id);
-            fflush(stdout);
+            semDown(semgid, sh->goaliesWaitTeam); //Leva up pelo ultimo a chegar WORKING
 
             if (sh->fSt.teamId == 1) {
                 sh->fSt.st.goalieStat[id]=WAITING_START_1;
                 saveState(nFic, &sh->fSt);
-                semUp(semgid, sh->mutex);
+                semUp(semgid, sh->playerRegistered);
+                printf("Waiting leave %d\n",id);
+                fflush(stdout);
                 return 1;
             }else if (sh->fSt.teamId == 2) {
                 sh->fSt.st.goalieStat[id]=WAITING_START_2;
                 saveState(nFic, &sh->fSt);
-                semUp(semgid, sh->mutex);
+                semUp(semgid, sh->playerRegistered);
+                printf("Waiting leave %d\n",id);
+                fflush(stdout);
                 return 2;
             }
-
         }
 
 
-
         if (sh->fSt.playersArrived >=NUMTEAMPLAYERS ) {
+            sh->fSt.goaliesFree+=1;
+            printf("Forming %d\n",id);
+            fflush(stdout);
+
             sh->fSt.st.goalieStat[id] = FORMING_TEAM;
+            saveState(nFic, &sh->fSt);                      //REVIEW falta o ultimo FORMING fazer o start e acho que há muita coisa perigosa
+
+            for (int i = 1;  i <= NUMTEAMPLAYERS; i++) {
+                semUp(semgid, sh->playersWaitTeam);
+                semUp(semgid, sh->mutex);
+
+                semDown(semgid, sh->playerRegistered);
+
+                semDown(semgid,sh->mutex);
+            }
+
+            sh->fSt.playersArrived-=4;
+            if(sh->fSt.teamId == 1){
+                sh->fSt.st.goalieStat[id]=WAITING_START_1;
+            }else {
+                sh->fSt.st.goalieStat[id]=WAITING_START_2;
+            }
             saveState(nFic, &sh->fSt);
+
+            semUp(semgid, sh->mutex);
+            semUp(semgid, sh->playerRegistered);
+            printf("Saiu  Forming %d\n",id);
+            fflush(stdout);
+            return (sh->fSt.teamId)++;
         }
 
 
@@ -226,21 +251,9 @@ static int goalieConstituteTeam (int id)                    //Late goaliesArrive
         perror ("error on the down operation for semaphore access (GL)");
         exit (EXIT_FAILURE);
     }
+
     printf("Golie Saiu %d\n",id);
     fflush(stdout);
-
-    /*
-    if( sh->fSt.playersArrived >= NUMTEAMPLAYERS) {
-        sh->fSt.playersFree+=1;
-        sh->fSt.st.goalieStat[id]=FORMING_TEAM;
-        saveState(nFic, &sh->fSt);
-
-        for (int i = 1;  i <= NUMTEAMPLAYERS; i++) {
-            semUp(semgid, sh->playersWaitTeam);
-        }
-        sh->fSt.playersArrived=0;
-    }
-    */
 
 
     return ret;
