@@ -45,15 +45,15 @@ void launch_processes(char *bin, char *prefix, int nProc, char *logFilename, int
     char idstr[3];
     char errorFilename[128];
     int p;
-    for (p = 0; p < nProc; p++) {           
+    for (p = 0; p < nProc; p++) {
         if ((pids[p] = fork ()) < 0) {
             perror ("error on the fork operation");
             exit (EXIT_FAILURE);
         }
         sprintf(idstr,"%d", p);
-        sprintf(errorFilename,"error_%s%02d", prefix, p); 
+        sprintf(errorFilename,"error_%s%02d", prefix, p);
         if (pids[p] == 0)
-            if (execl (bin, bin, idstr, logFilename, errorFilename, NULL) < 0) { 
+            if (execl (bin, bin, idstr, logFilename, errorFilename, NULL) < 0) {
                 perror ("error on the generation of the process");
                 exit (EXIT_FAILURE);
             }
@@ -95,17 +95,17 @@ int main (int argc, char *argv[])
     }
 
     /* creating and initializing the shared memory region and the log file */
-    if ((shmid = shmemCreate (key, sizeof (SHARED_DATA))) == -1) { 
+    if ((shmid = shmemCreate (key, sizeof (SHARED_DATA))) == -1) {
         perror ("error on creating the shared memory region");
         exit (EXIT_FAILURE);
     }
-    if (shmemAttach (shmid, (void **) &sh) == -1) { 
+    if (shmemAttach (shmid, (void **) &sh) == -1) {
         perror ("error on mapping the shared region on the process address space");
         exit (EXIT_FAILURE);
     }
 
     /* initialize random generator */
-    srandom ((unsigned int) getpid ());                                
+    srandom ((unsigned int) getpid ());
 
     /* initialize problem internal status */
     int p;
@@ -117,17 +117,17 @@ int main (int argc, char *argv[])
         sh->fSt.st.goalieStat[g]        = ARRIVING;                            /* the goalies are arriving */
     }
     sh->fSt.st.refereeStat = ARRIVINGR;                                               /*referee is arriving*/
-    
-    sh->fSt.nPlayers         = NUMPLAYERS;                                              
+
+    sh->fSt.nPlayers         = NUMPLAYERS;
     sh->fSt.nGoalies         = NUMGOALIES;
-    sh->fSt.playersArrived   = 0;                                             
-    sh->fSt.goaliesArrived   = 0;                                             
-    sh->fSt.playersFree      = 0;                                             
-    sh->fSt.goaliesFree      = 0;                                             
-    sh->fSt.teamId           = 1;                                             
+    sh->fSt.playersArrived   = 0;
+    sh->fSt.goaliesArrived   = 0;
+    sh->fSt.playersFree      = 0;
+    sh->fSt.goaliesFree      = 0;
+    sh->fSt.teamId           = 1;
 
     /* create log file */
-    createLog (nFic, &sh->fSt);                                  
+    createLog (nFic, &sh->fSt);
     saveState(nFic,&sh->fSt);
 
     /* initialize semaphore ids */
@@ -139,9 +139,9 @@ int main (int argc, char *argv[])
     sh->refereeWaitTeams            = REFEREEWAITTEAMS;
     sh->playerRegistered            = PLAYERREGISTERED;
     sh->playing                     = PLAYING;
- 
+
      /* creating and initializing the semaphore set */
-    if ((semgid = semCreate (key, SEM_NU)) == -1) { 
+    if ((semgid = semCreate (key, SEM_NU)) == -1) {
         perror ("error on creating the semaphore set");
         exit (EXIT_FAILURE);
     }
@@ -150,7 +150,7 @@ int main (int argc, char *argv[])
         exit (EXIT_FAILURE);
     }
 
-    /* generation of intervening entities processes */                            
+    /* generation of intervening entities processes */
     /* player processes */
     launch_processes(PLAYER, "PL", NUMPLAYERS, nFic, pidPL);
 
@@ -171,7 +171,7 @@ int main (int argc, char *argv[])
     m = 0;
     do {
         info = wait (&status);
-        if (info == -1) { 
+        if (info == -1) {
             perror ("error on aiting for an intervening process");
             exit (EXIT_FAILURE);
         }
@@ -183,11 +183,11 @@ int main (int argc, char *argv[])
         perror ("error on destructing the semaphore set");
         exit (EXIT_FAILURE);
     }
-    if (shmemDettach (sh) == -1) { 
+    if (shmemDettach (sh) == -1) {
         perror ("error on unmapping the shared region off the process address space");
         exit (EXIT_FAILURE);
     }
-    if (shmemDestroy (shmid) == -1) { 
+    if (shmemDestroy (shmid) == -1) {
         perror ("error on destructing the shared region");
         exit (EXIT_FAILURE);
     }

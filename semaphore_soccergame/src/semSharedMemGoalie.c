@@ -68,15 +68,15 @@ int main (int argc, char *argv[])
     int n, team;
 
     /* validation of command line parameters */
-    if (argc != 4) { 
+    if (argc != 4) {
         freopen ("error_GL", "a", stderr);
         fprintf (stderr, "Number of parameters is incorrect!\n");
         return EXIT_FAILURE;
     }
-    
+
     /* get goalie id - argv[1]*/
     n = (unsigned int) strtol (argv[1], &tinp, 0);
-    if ((*tinp != '\0') || (n >= NUMGOALIES )) { 
+    if ((*tinp != '\0') || (n >= NUMGOALIES )) {
         fprintf (stderr, "Goalie process identification is wrong!\n");
         return EXIT_FAILURE;
     }
@@ -96,21 +96,21 @@ int main (int argc, char *argv[])
 
     /* connection to the semaphore set and the shared memory region and mapping the shared region onto the
        process address space */
-    if ((semgid = semConnect (key)) == -1) { 
+    if ((semgid = semConnect (key)) == -1) {
         perror ("error on connecting to the semaphore set");
         return EXIT_FAILURE;
     }
-    if ((shmid = shmemConnect (key)) == -1) { 
+    if ((shmid = shmemConnect (key)) == -1) {
         perror ("error on connecting to the shared memory region");
         return EXIT_FAILURE;
     }
-    if (shmemAttach (shmid, (void **) &sh) == -1) { 
+    if (shmemAttach (shmid, (void **) &sh) == -1) {
         perror ("error on mapping the shared region on the process address space");
         return EXIT_FAILURE;
     }
 
     /* initialize random generator */
-    srandom ((unsigned int) getpid ());              
+    srandom ((unsigned int) getpid ());
 
     /* simulation of the life cycle of the goalie */
     arrive(n);
@@ -133,57 +133,115 @@ int main (int argc, char *argv[])
  *
  *  Goalie updates state and takes some time to arrive
  *  The internal state should be saved.
- *
+ * !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
  */
 static void arrive(int id)
-{    
+{
     if (semDown (semgid, sh->mutex) == -1)  {                                                     /* enter critical region */
         perror ("error on the up operation for semaphore access (GL)");
         exit (EXIT_FAILURE);
     }
 
-    /* TODO: insert your code here */
-    
+    sh->fSt.st.goalieStat[id] = ARRIVING;
+    sh->fSt.goaliesArrived+=1;
+    saveState(nFic, &sh->fSt);          //esta estrutura tá correta
+
     if (semUp (semgid, sh->mutex) == -1) {                                                         /* exit critical region */
         perror ("error on the down operation for semaphore access (GL)");
         exit (EXIT_FAILURE);
     }
 
-    usleep((200.0*random())/(RAND_MAX+1.0)+60.0);
+    usleep((80.0*random())/(RAND_MAX+1.0)+60.0);  //5000000.0
 }
 
 /**
  *  \brief goalie constitutes team
  *
  *  If goalie is late, it updates state and leaves.
- *  If there are enough free players to form a team, goalie forms team allowing team members to 
+ *  If there are enough free players to form a team, goalie forms team allowing team members to
  *  proceed and waiting for them to acknowledge registration.
  *  Otherwise it updates state, waits for the forming teammate to "call" him, saves its team
  *  and acknowledges registration.
  *  The internal state should be saved.
  *
  *  \param id goalie id
- * 
+ *
  *  \return id of goalie team (0 for late goalies; 1 for team 1; 2 for team 2)
  *
  */
-static int goalieConstituteTeam (int id)
-{
-    int ret = 0;
+static int goalieConstituteTeam (int id)                    //Late goaliesArrived >=2
+{                                                           //Forming playersArrived >= 4
+    int ret = 0;                                            //Waiting playersArrived < 4
 
     if (semDown (semgid, sh->mutex) == -1)  {                                                     /* enter critical region */
         perror ("error on the up operation for semaphore access (GL)");
         exit (EXIT_FAILURE);
     }
+    printf("Golie Entrou %d\n",id);
+    fflush(stdout);
 
-    /* TODO: insert your code here */
-    
+    if (sh->fSt.goaliesFree >= 2) {
+        sh->fSt.st.goalieStat[id] = LATE;
+        saveState(nFic, &sh->fSt);
+        printf("Golie Saiu %d\n",id);
+        fflush(stdout);
+        semUp(semgid, sh->mutex);
+        return 0;
+    }
+
+        sh->fSt.goaliesFree+=1;
+
+        if (sh->fSt.playersArrived < NUMTEAMPLAYERS) {
+            sh->fSt.st.goalieStat[id] = WAITING_TEAM;
+            saveState(nFic, &sh->fSt);
+
+            semUp (semgid, sh->mutex);
+            semDown(semgid, sh->goaliesWaitTeam);
+            printf("Golie UP %d\n",id);
+            fflush(stdout);
+
+            if (sh->fSt.teamId == 1) {
+                sh->fSt.st.goalieStat[id]=WAITING_START_1;
+                saveState(nFic, &sh->fSt);
+                semUp(semgid, sh->mutex);
+                return 1;
+            }else if (sh->fSt.teamId == 2) {
+                sh->fSt.st.goalieStat[id]=WAITING_START_2;
+                saveState(nFic, &sh->fSt);
+                semUp(semgid, sh->mutex);
+                return 2;
+            }
+
+        }
+
+
+
+        if (sh->fSt.playersArrived >=NUMTEAMPLAYERS ) {
+            sh->fSt.st.goalieStat[id] = FORMING_TEAM;
+            saveState(nFic, &sh->fSt);
+        }
+
+
     if (semUp (semgid, sh->mutex) == -1) {                                                         /* exit critical region */
         perror ("error on the down operation for semaphore access (GL)");
         exit (EXIT_FAILURE);
     }
+    printf("Golie Saiu %d\n",id);
+    fflush(stdout);
 
-    /* TODO: insert your code here */
+    /*
+    if( sh->fSt.playersArrived >= NUMTEAMPLAYERS) {
+        sh->fSt.playersFree+=1;
+        sh->fSt.st.goalieStat[id]=FORMING_TEAM;
+        saveState(nFic, &sh->fSt);
+
+        for (int i = 1;  i <= NUMTEAMPLAYERS; i++) {
+            semUp(semgid, sh->playersWaitTeam);
+        }
+        sh->fSt.playersArrived=0;
+    }
+    */
+
 
     return ret;
 }
@@ -191,7 +249,7 @@ static int goalieConstituteTeam (int id)
 /**
  *  \brief goalie waits for referee to start match
  *
- *  The goalie updates its state and waits for referee to start match.  
+ *  The goalie updates its state and waits for referee to start match.
  *  The internal state should be saved.
  *
  *  \param id   goalie id
@@ -218,7 +276,7 @@ static void waitReferee (int id, int team)
 /**
  *  \brief goalie waits for referee to end match
  *
- *  The goalie updates its state and waits for referee to end match.  
+ *  The goalie updates its state and waits for referee to end match.
  *  The internal state should be saved.
  *
  *  \param id   goalie id
@@ -239,6 +297,5 @@ static void playUntilEnd (int id, int team)
     }
 
     /* TODO: insert your code here */
-    
-}
 
+}

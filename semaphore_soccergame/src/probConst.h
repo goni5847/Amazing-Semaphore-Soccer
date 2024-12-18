@@ -12,7 +12,7 @@
 #define PROBCONST_H_
 
 /* Generic parameters */
- 
+
 /** \brief total number of players */
 #define  NUMPLAYERS       10
 /** \brief total number of goalies */
@@ -32,7 +32,7 @@
 #define  ARRIVING          'A'
 /** \brief player/goalie waiting to constitute team */
 #define  WAITING_TEAM      'W'
-/** \brief player/goalie waiting to constitute team */
+/** \brief player/goalie forming to constitute team */
 #define  FORMING_TEAM      'F'
 /** \brief player/goalie waiting for referee to start game in team 1 */
 #define  WAITING_START_1   's'
@@ -42,7 +42,7 @@
 #define  PLAYING_1         'p'
 /** \brief player/goalie playing in team 2 */
 #define  PLAYING_2         'P'
-/** \brief player/goalie playing */
+/** \brief player/goalie late */
 #define  LATE              'L'
 
 /* Referee state constants */
