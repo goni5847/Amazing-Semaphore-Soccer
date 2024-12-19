@@ -143,7 +143,6 @@ static void arrive(int id)
     }
 
     sh->fSt.st.goalieStat[id] = ARRIVING;
-    sh->fSt.goaliesArrived+=1;
     saveState(nFic, &sh->fSt);          //esta estrutura tá correta
 
     if (semUp (semgid, sh->mutex) == -1) {                                                         /* exit critical region */
@@ -178,7 +177,7 @@ static int goalieConstituteTeam (int id)                    //Late goaliesArrive
         exit (EXIT_FAILURE);
     }
 
-    if (sh->fSt.goaliesFree >= 2) { //se 1 ou 2 goalies estão free os restantes ficarão late automaticamente
+    if (sh->fSt.goaliesArrived >= 2) {    //se 1 ou 2 goalies chegaram os restantes ficarão late automaticamente
         sh->fSt.st.goalieStat[id] = LATE; //alterar estado
         saveState(nFic, &sh->fSt);        //guardar estado
         semUp(semgid, sh->mutex);         //destrancar o mutex
@@ -187,7 +186,9 @@ static int goalieConstituteTeam (int id)                    //Late goaliesArrive
 
 
     if (sh->fSt.playersArrived < NUMTEAMPLAYERS) {   //se ainda não chegaram NUMTEAMPLAYERS no total
-        sh->fSt.goaliesFree+=1;                      //marcar mais um goalie à espera
+        sh->fSt.goaliesArrived+=1;                      //marcar mais um goalie à espera
+        sh->fSt.goaliesFree+=1;
+
         printf("Waiting %d\n",id);
         fflush(stdout);
 
@@ -202,22 +203,27 @@ static int goalieConstituteTeam (int id)                    //Late goaliesArrive
             semUp(semgid, sh->playerRegistered);        //libertar 1 no playerRegistered
             printf("Waiting leave %d\n",id);
             fflush(stdout);
+            semUp(semgid, sh->mutex);
             return 1;
         }else if (sh->fSt.teamId == 2) {                //se segunda equipa
             sh->fSt.st.goalieStat[id]=WAITING_START_2;  //alterar estado
             saveState(nFic, &sh->fSt);                  //guardar estado
             semUp(semgid, sh->playerRegistered);        //libertar 1 no playerRegistered
+
             printf("Waiting leave %d\n",id);
             fflush(stdout);
+            semUp(semgid, sh->mutex);
             return 2;
         }
     }
 
 
     if (sh->fSt.playersArrived >=NUMTEAMPLAYERS ) {    //isto é o oposto do "if(sh->fSt.playersArrived < NUMTEAMPLAYERS)" então talvez possa ser só else
-        sh->fSt.goaliesFree+=1;                        //mais um goalie free
+        sh->fSt.goaliesArrived+=1;                        //mais um goalie free
         printf("Forming %d\n",id);                     //há jogadores suficientes então o goalie é que fica forming
         fflush(stdout);
+
+        sh->fSt.playersArrived-=4;
 
         sh->fSt.st.goalieStat[id] = FORMING_TEAM;      //alterar estado
         saveState(nFic, &sh->fSt);                      //REVIEW falta o ultimo FORMING fazer o start e acho que há muita coisa perigosa
@@ -231,19 +237,26 @@ static int goalieConstituteTeam (int id)                    //Late goaliesArrive
             semDown(semgid,sh->mutex);                 //trancar o mutex?
         }
 
-        sh->fSt.playersArrived-=4;                     //4 jogadores foram colocados
         if(sh->fSt.teamId == 1){                       //equipa 1
             sh->fSt.st.goalieStat[id]=WAITING_START_1; //alterar estado
+            saveState(nFic, &sh->fSt);
+            semUp(semgid, sh->playerRegistered);           //libertar 1 no playerRegistered
+            semUp(semgid, sh->mutex);
+            printf("Saiu  1Forming  %d\n",id);
+            fflush(stdout);
+            return (sh->fSt.teamId)++;
         }else {
             sh->fSt.st.goalieStat[id]=WAITING_START_2;
+            saveState(nFic, &sh->fSt);
+            semUp(semgid, sh->playerRegistered);           //libertar 1 no playerRegistered
+            for (int i = 0; i < sh->fSt.nPlayers; i++) {
+                semUp(semgid, sh->playersWaitReferee);
+            }
+            semUp(semgid, sh->mutex);
+            printf("Saiu  2Forming %d\n",id);
+            fflush(stdout);
+            return sh->fSt.teamId;
         }
-        saveState(nFic, &sh->fSt);                     //guardar estado
-
-        semUp(semgid, sh->mutex);                      //destrancar o mutex?
-        semUp(semgid, sh->playerRegistered);           //libertar 1 no playerRegistered
-        printf("Saiu  Forming %d\n",id);
-        fflush(stdout);
-        return (sh->fSt.teamId)++;
     }
 
 
