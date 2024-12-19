@@ -178,73 +178,73 @@ static int goalieConstituteTeam (int id)                    //Late goaliesArrive
         exit (EXIT_FAILURE);
     }
 
-    if (sh->fSt.goaliesFree >= 2) {
-        sh->fSt.st.goalieStat[id] = LATE;
-        saveState(nFic, &sh->fSt);
-        semUp(semgid, sh->mutex);
+    if (sh->fSt.goaliesFree >= 2) { //se 1 ou 2 goalies estão free os restantes ficarão late automaticamente
+        sh->fSt.st.goalieStat[id] = LATE; //alterar estado
+        saveState(nFic, &sh->fSt);        //guardar estado
+        semUp(semgid, sh->mutex);         //destrancar o mutex
         return 0;
     }
 
 
-        if (sh->fSt.playersArrived < NUMTEAMPLAYERS) {
-            sh->fSt.goaliesFree+=1;
-            printf("Waiting %d\n",id);
+    if (sh->fSt.playersArrived < NUMTEAMPLAYERS) {   //se ainda não chegaram NUMTEAMPLAYERS no total
+        sh->fSt.goaliesFree+=1;                      //marcar mais um goalie à espera
+        printf("Waiting %d\n",id);
+        fflush(stdout);
+
+        sh->fSt.st.goalieStat[id] = WAITING_TEAM;    //alterar estado
+        saveState(nFic, &sh->fSt);                   //guardar estado
+        semUp (semgid, sh->mutex);                   //destrancar o mutex
+        semDown(semgid, sh->goaliesWaitTeam); //Leva up pelo ultimo a chegar WAITING
+
+        if (sh->fSt.teamId == 1) {                      //se primeira equipa
+            sh->fSt.st.goalieStat[id]=WAITING_START_1;  //alterar estado
+            saveState(nFic, &sh->fSt);                  //guardar estado
+            semUp(semgid, sh->playerRegistered);        //libertar 1 no playerRegistered
+            printf("Waiting leave %d\n",id);
             fflush(stdout);
+            return 1;
+        }else if (sh->fSt.teamId == 2) {                //se segunda equipa
+            sh->fSt.st.goalieStat[id]=WAITING_START_2;  //alterar estado
+            saveState(nFic, &sh->fSt);                  //guardar estado
+            semUp(semgid, sh->playerRegistered);        //libertar 1 no playerRegistered
+            printf("Waiting leave %d\n",id);
+            fflush(stdout);
+            return 2;
+        }
+    }
 
-            sh->fSt.st.goalieStat[id] = WAITING_TEAM;
-            saveState(nFic, &sh->fSt);
-            semUp (semgid, sh->mutex);
-            semDown(semgid, sh->goaliesWaitTeam); //Leva up pelo ultimo a chegar WORKING
 
-            if (sh->fSt.teamId == 1) {
-                sh->fSt.st.goalieStat[id]=WAITING_START_1;
-                saveState(nFic, &sh->fSt);
-                semUp(semgid, sh->playerRegistered);
-                printf("Waiting leave %d\n",id);
-                fflush(stdout);
-                return 1;
-            }else if (sh->fSt.teamId == 2) {
-                sh->fSt.st.goalieStat[id]=WAITING_START_2;
-                saveState(nFic, &sh->fSt);
-                semUp(semgid, sh->playerRegistered);
-                printf("Waiting leave %d\n",id);
-                fflush(stdout);
-                return 2;
-            }
+    if (sh->fSt.playersArrived >=NUMTEAMPLAYERS ) {    //isto é o oposto do "if(sh->fSt.playersArrived < NUMTEAMPLAYERS)" então talvez possa ser só else
+        sh->fSt.goaliesFree+=1;                        //mais um goalie free
+        printf("Forming %d\n",id);                     //há jogadores suficientes então o goalie é que fica forming
+        fflush(stdout);
+
+        sh->fSt.st.goalieStat[id] = FORMING_TEAM;      //alterar estado
+        saveState(nFic, &sh->fSt);                      //REVIEW falta o ultimo FORMING fazer o start e acho que há muita coisa perigosa
+
+        for (int i = 1;  i <= NUMTEAMPLAYERS; i++) {   //para cada jogador
+            semUp(semgid, sh->playersWaitTeam);        //libertar 1 no playersWaitTeam
+            semUp(semgid, sh->mutex);                  //destrancar o mutex?
+
+            semDown(semgid, sh->playerRegistered);     //trancar 1 no playerRegistered
+
+            semDown(semgid,sh->mutex);                 //trancar o mutex?
         }
 
-
-        if (sh->fSt.playersArrived >=NUMTEAMPLAYERS ) {
-            sh->fSt.goaliesFree+=1;
-            printf("Forming %d\n",id);
-            fflush(stdout);
-
-            sh->fSt.st.goalieStat[id] = FORMING_TEAM;
-            saveState(nFic, &sh->fSt);                      //REVIEW falta o ultimo FORMING fazer o start e acho que há muita coisa perigosa
-
-            for (int i = 1;  i <= NUMTEAMPLAYERS; i++) {
-                semUp(semgid, sh->playersWaitTeam);
-                semUp(semgid, sh->mutex);
-
-                semDown(semgid, sh->playerRegistered);
-
-                semDown(semgid,sh->mutex);
-            }
-
-            sh->fSt.playersArrived-=4;
-            if(sh->fSt.teamId == 1){
-                sh->fSt.st.goalieStat[id]=WAITING_START_1;
-            }else {
-                sh->fSt.st.goalieStat[id]=WAITING_START_2;
-            }
-            saveState(nFic, &sh->fSt);
-
-            semUp(semgid, sh->mutex);
-            semUp(semgid, sh->playerRegistered);
-            printf("Saiu  Forming %d\n",id);
-            fflush(stdout);
-            return (sh->fSt.teamId)++;
+        sh->fSt.playersArrived-=4;                     //4 jogadores foram colocados
+        if(sh->fSt.teamId == 1){                       //equipa 1
+            sh->fSt.st.goalieStat[id]=WAITING_START_1; //alterar estado
+        }else {
+            sh->fSt.st.goalieStat[id]=WAITING_START_2;
         }
+        saveState(nFic, &sh->fSt);                     //guardar estado
+
+        semUp(semgid, sh->mutex);                      //destrancar o mutex?
+        semUp(semgid, sh->playerRegistered);           //libertar 1 no playerRegistered
+        printf("Saiu  Forming %d\n",id);
+        fflush(stdout);
+        return (sh->fSt.teamId)++;
+    }
 
 
     if (semUp (semgid, sh->mutex) == -1) {                                                         /* exit critical region */
@@ -252,13 +252,12 @@ static int goalieConstituteTeam (int id)                    //Late goaliesArrive
         exit (EXIT_FAILURE);
     }
 
-    printf("Golie Saiu %d\n",id);
+    printf("Goalie Saiu %d\n",id);
     fflush(stdout);
 
 
     return ret;
 }
-
 /**
  *  \brief goalie waits for referee to start match
  *
