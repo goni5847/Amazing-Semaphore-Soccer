@@ -32,15 +32,15 @@ typedef struct
           unsigned int mutex;
           /** \brief identification of semaphore used by players to wait for forming team teammate - val = 0 */
           unsigned int playersWaitTeam;
-          /** \brief identification of semaphore used by goalies to wait for forming team teammate - val = 0 */
+          /** \brief identification of semaphore used by goalies to wait for forming team teammate - val = 0 G */
           unsigned int goaliesWaitTeam;
-          /** \brief identification of semaphore used by players and goalies to wait for the match to start - val = 0 */
+          /** \brief identification of semaphore used by players and goalies to wait for the match to start - val = 0 G */
           unsigned int playersWaitReferee;
-          /** \brief identification of semaphore used by players and goalies to wait for the match to end - val = 0 */
+          /** \brief identification of semaphore used by players and goalies to wait for the match to end - val = 0 G */
           unsigned int playersWaitEnd;
           /** \brief identification of semaphore used by referee to wait for teams to be formed – val = 0  */
           unsigned int refereeWaitTeams;
-          /** \brief identification of semaphore used by players and goalies to acknowledge team registration – val = 0  */
+          /** \brief identification of semaphore used by players and goalies to acknowledge team registration – val = 0 G */
           unsigned int playerRegistered;
           /** \brief identification of semaphore used by referee to wait for players and goalies to start – val = 0  */
           unsigned int playing;
@@ -48,7 +48,7 @@ typedef struct
         } SHARED_DATA;
 
 /** \brief number of semaphores in the set */
-#define SEM_NU                   8 
+#define SEM_NU                   8
 
 #define MUTEX                    1
 #define PLAYERSWAITTEAM          2

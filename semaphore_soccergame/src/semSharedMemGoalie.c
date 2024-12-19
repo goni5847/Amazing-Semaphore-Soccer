@@ -242,6 +242,7 @@ static int goalieConstituteTeam (int id)                    //Late goaliesArrive
             saveState(nFic, &sh->fSt);
             semUp(semgid, sh->playerRegistered);           //libertar 1 no playerRegistered
             semUp(semgid, sh->mutex);
+            semUp(semgid, sh->refereeWaitTeams);          //libertar pq uma equipa fica formada REVER
             printf("Saiu  1Forming  %d\n",id);
             fflush(stdout);
             return (sh->fSt.teamId)++;
@@ -249,9 +250,10 @@ static int goalieConstituteTeam (int id)                    //Late goaliesArrive
             sh->fSt.st.goalieStat[id]=WAITING_START_2;
             saveState(nFic, &sh->fSt);
             semUp(semgid, sh->playerRegistered);           //libertar 1 no playerRegistered
-            for (int i = 0; i < sh->fSt.nPlayers; i++) {
-                semUp(semgid, sh->playersWaitReferee);
+            for (int i = 0; i < sh->fSt.nPlayers; i++) {   //Passar a Starting
+                semUp(semgid, sh->playersWaitReferee);          //REVER
             }
+            semUp(semgid, sh->refereeWaitTeams);            //libertar pq uma equipa fica formada no timing correto (passar referee a S) REVER
             semUp(semgid, sh->mutex);
             printf("Saiu  2Forming %d\n",id);
             fflush(stdout);
@@ -282,13 +284,25 @@ static int goalieConstituteTeam (int id)                    //Late goaliesArrive
  */
 static void waitReferee (int id, int team)
 {
+    semDown(semgid, sh->playing);
+
     if (semDown (semgid, sh->mutex) == -1)  {                                                     /* enter critical region */
         perror ("error on the up operation for semaphore access (GL)");
         exit (EXIT_FAILURE);
     }
 
-    /* TODO: insert your code here */
 
+    if (team == 1) {
+        sh->fSt.st.goalieStat[id] = PLAYING_1;
+    }else {
+        sh->fSt.st.goalieStat[id] = PLAYING_2;
+    }
+    saveState(nFic, &sh->fSt);
+    printf("OLA\n",id);
+    fflush(stdout);
+    semUp(semgid, sh->playersWaitTeam);                   //REVER
+    printf("OLA %d\n",id);
+    fflush(stdout);
     if (semUp (semgid, sh->mutex) == -1) {                                                         /* exit critical region */
         perror ("error on the down operation for semaphore access (GL)");
         exit (EXIT_FAILURE);
