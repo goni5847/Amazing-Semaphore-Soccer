@@ -150,7 +150,7 @@ static void arrive(int id)
         exit (EXIT_FAILURE);
     }
 
-    usleep((8000000.0*random())/(RAND_MAX+1.0)+60.0);  //8000000.0
+    usleep((80.0*random())/(RAND_MAX+1.0)+60.0);  //8000000.0
 }
 
 /**
@@ -184,9 +184,9 @@ static int goalieConstituteTeam (int id)                    //Late goaliesArrive
         return 0;
     }
 
+    sh->fSt.goaliesArrived+=1;                          //Nos dois casos seguintes o arrived tem de ser atualizado
 
     if (sh->fSt.playersArrived < NUMTEAMPLAYERS) {   //se ainda não chegaram NUMTEAMPLAYERS no total
-        sh->fSt.goaliesArrived+=1;                      //marcar mais um goalie à espera
         sh->fSt.goaliesFree+=1;
 
         printf("Waiting %d\n",id);
@@ -201,6 +201,7 @@ static int goalieConstituteTeam (int id)                    //Late goaliesArrive
             sh->fSt.st.goalieStat[id]=WAITING_START_1;  //alterar estado
             saveState(nFic, &sh->fSt);                  //guardar estado
             semUp(semgid, sh->playerRegistered);        //libertar 1 no playerRegistered
+
             printf("Waiting leave %d\n",id);
             fflush(stdout);
             semUp(semgid, sh->mutex);
@@ -218,12 +219,11 @@ static int goalieConstituteTeam (int id)                    //Late goaliesArrive
     }
 
 
-    if (sh->fSt.playersArrived >=NUMTEAMPLAYERS ) {    //isto é o oposto do "if(sh->fSt.playersArrived < NUMTEAMPLAYERS)" então talvez possa ser só else
-        sh->fSt.goaliesArrived+=1;                        //mais um goalie free
+    if (sh->fSt.playersFree >=NUMTEAMPLAYERS ) {    //isto é o oposto do "if(sh->fSt.playersFree < NUMTEAMPLAYERS)" então talvez possa ser só else
         printf("Forming %d\n",id);                     //há jogadores suficientes então o goalie é que fica forming
         fflush(stdout);
 
-        sh->fSt.playersArrived-=4;
+        sh->fSt.playersFree-=4;
 
         sh->fSt.st.goalieStat[id] = FORMING_TEAM;      //alterar estado
         saveState(nFic, &sh->fSt);                      //REVIEW falta o ultimo FORMING fazer o start e acho que há muita coisa perigosa
@@ -250,9 +250,6 @@ static int goalieConstituteTeam (int id)                    //Late goaliesArrive
             sh->fSt.st.goalieStat[id]=WAITING_START_2;
             saveState(nFic, &sh->fSt);
             semUp(semgid, sh->playerRegistered);           //libertar 1 no playerRegistered
-            for (int i = 0; i < sh->fSt.nPlayers; i++) {   //Passar a Starting
-                semUp(semgid, sh->playersWaitReferee);          //REVER
-            }
             semUp(semgid, sh->refereeWaitTeams);            //libertar pq uma equipa fica formada no timing correto (passar referee a S) REVER
             semUp(semgid, sh->mutex);
             printf("Saiu  2Forming %d\n",id);
@@ -284,7 +281,7 @@ static int goalieConstituteTeam (int id)                    //Late goaliesArrive
  */
 static void waitReferee (int id, int team)
 {
-    semDown(semgid, sh->playing);
+    semDown(semgid, sh->playersWaitReferee);
 
     if (semDown (semgid, sh->mutex) == -1)  {                                                     /* enter critical region */
         perror ("error on the up operation for semaphore access (GL)");
@@ -297,17 +294,13 @@ static void waitReferee (int id, int team)
     }else {
         sh->fSt.st.goalieStat[id] = PLAYING_2;
     }
+
     saveState(nFic, &sh->fSt);
-    printf("OLA\n",id);
-    fflush(stdout);
-    semUp(semgid, sh->playersWaitTeam);                   //REVER
-    printf("OLA %d\n",id);
-    fflush(stdout);
+
     if (semUp (semgid, sh->mutex) == -1) {                                                         /* exit critical region */
         perror ("error on the down operation for semaphore access (GL)");
         exit (EXIT_FAILURE);
     }
-
     /* TODO: insert your code here */
 
 }
