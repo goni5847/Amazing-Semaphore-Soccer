@@ -171,8 +171,6 @@ static void arrive(int id)
  */
 static int goalieConstituteTeam (int id)                    //Late goaliesArrived >=2
 {                                                           //Forming playersArrived >= 4
-    int ret = 0;                                            //Waiting playersArrived < 4
-
     if (semDown (semgid, sh->mutex) == -1)  {                                                     /* enter critical region */
         perror ("error on the up operation for semaphore access (GL)");
         exit (EXIT_FAILURE);
@@ -188,7 +186,7 @@ static int goalieConstituteTeam (int id)                    //Late goaliesArrive
     sh->fSt.goaliesArrived+=1;                          //Nos dois casos seguintes o arrived tem de ser atualizado
 
     if (sh->fSt.playersFree < NUMTEAMPLAYERS) {   //se ainda não estão free NUMTEAMPLAYERS
-        sh->fSt.goaliesFree+=1;
+        sh->fSt.goaliesFree+=1;                   //mais um guarda-redes é elegível
 
         sh->fSt.st.goalieStat[id] = WAITING_TEAM;    //alterar estado
         saveState(nFic, &sh->fSt);                   //guardar estado
@@ -196,17 +194,8 @@ static int goalieConstituteTeam (int id)                    //Late goaliesArrive
         semUp (semgid, sh->mutex);                   //destrancar o mutex
         semDown(semgid, sh->goaliesWaitTeam);       //Leva up pelo ultimo a chegar WAITING
 
-        if (sh->fSt.teamId == 1) {                      //se primeira equipa
-            semUp(semgid, sh->playerRegistered);
-            return 1;
-        }else if (sh->fSt.teamId == 2) {                //se segunda equipa
-            semUp(semgid, sh->playerRegistered);
-            return 2;
-        }
-    }
-
-
-    if (sh->fSt.playersFree >=NUMTEAMPLAYERS ) {    //isto é o oposto do "if(sh->fSt.playersFree < NUMTEAMPLAYERS)" então talvez possa ser só else
+        semUp(semgid, sh->playerRegistered);
+    }else{
         sh->fSt.playersFree-=NUMTEAMPLAYERS;
 
         sh->fSt.st.goalieStat[id] = FORMING_TEAM;      //alterar estado
@@ -222,25 +211,16 @@ static int goalieConstituteTeam (int id)                    //Late goaliesArrive
             semDown(semgid,sh->mutex);                 //trancar o mutex?
         }
 
-        if(sh->fSt.teamId == 1){                       //equipa 1
-            semUp(semgid, sh->refereeWaitTeams);
-            semUp(semgid, sh->mutex);
-            return (sh->fSt.teamId)++;
-        }else {
-            semUp(semgid, sh->refereeWaitTeams);
-            semUp(semgid, sh->mutex);
-            return sh->fSt.teamId;
-        }
+        semUp(semgid, sh->refereeWaitTeams);
+        semUp(semgid, sh->mutex);
     }
-
 
     if (semUp (semgid, sh->mutex) == -1) {                                                         /* exit critical region */
         perror ("error on the down operation for semaphore access (GL)");
         exit (EXIT_FAILURE);
     }
 
-
-    return ret;
+   return sh->fSt.teamId;
 }
 /**
  *  \brief goalie waits for referee to start match
