@@ -151,7 +151,7 @@ static void arrive(int id)
         exit (EXIT_FAILURE);
     }
 
-    usleep((80.0*random())/(RAND_MAX+1.0)+60.0);  //8000000.0
+    usleep((8000000.0*random())/(RAND_MAX+1.0)+60.0);  //8000000.0
 }
 
 /**
@@ -190,9 +190,6 @@ static int goalieConstituteTeam (int id)                    //Late goaliesArrive
     if (sh->fSt.playersFree < NUMTEAMPLAYERS) {   //se ainda não estão free NUMTEAMPLAYERS
         sh->fSt.goaliesFree+=1;
 
-        printf("Waiting %d\n",id);
-        fflush(stdout);
-
         sh->fSt.st.goalieStat[id] = WAITING_TEAM;    //alterar estado
         saveState(nFic, &sh->fSt);                   //guardar estado
 
@@ -200,29 +197,16 @@ static int goalieConstituteTeam (int id)                    //Late goaliesArrive
         semDown(semgid, sh->goaliesWaitTeam);       //Leva up pelo ultimo a chegar WAITING
 
         if (sh->fSt.teamId == 1) {                      //se primeira equipa
-            sh->fSt.st.goalieStat[id]=WAITING_START_1;  //alterar estado
-            saveState(nFic, &sh->fSt);                  //guardar estado
-            semUp(semgid, sh->playerRegistered);        //libertar 1 no playerRegistered
-
-            printf("Waiting leave %d\n",id);
-            fflush(stdout);
+            semUp(semgid, sh->playerRegistered);
             return 1;
         }else if (sh->fSt.teamId == 2) {                //se segunda equipa
-            sh->fSt.st.goalieStat[id]=WAITING_START_2;  //alterar estado
-            saveState(nFic, &sh->fSt);                  //guardar estado
-            semUp(semgid, sh->playerRegistered);        //libertar 1 no playerRegistered
-
-            printf("Waiting leave %d\n",id);
-            fflush(stdout);
+            semUp(semgid, sh->playerRegistered);
             return 2;
         }
     }
 
 
     if (sh->fSt.playersFree >=NUMTEAMPLAYERS ) {    //isto é o oposto do "if(sh->fSt.playersFree < NUMTEAMPLAYERS)" então talvez possa ser só else
-        printf("Forming %d\n",id);                     //há jogadores suficientes então o goalie é que fica forming
-        fflush(stdout);
-
         sh->fSt.playersFree-=4;
 
         sh->fSt.st.goalieStat[id] = FORMING_TEAM;      //alterar estado
@@ -239,22 +223,12 @@ static int goalieConstituteTeam (int id)                    //Late goaliesArrive
         }
 
         if(sh->fSt.teamId == 1){                       //equipa 1
-            sh->fSt.st.goalieStat[id]=WAITING_START_1; //alterar estado
-            saveState(nFic, &sh->fSt);
-
-            semUp(semgid, sh->refereeWaitTeams);          //libertar pq uma equipa fica formada
+            semUp(semgid, sh->refereeWaitTeams);
             semUp(semgid, sh->mutex);
-            printf("Saiu  1Forming  %d\n",id);
-            fflush(stdout);
             return (sh->fSt.teamId)++;
         }else {
-            sh->fSt.st.goalieStat[id]=WAITING_START_2;
-            saveState(nFic, &sh->fSt);
-
-            semUp(semgid, sh->refereeWaitTeams);            //libertar pq uma equipa fica formada no timing correto
+            semUp(semgid, sh->refereeWaitTeams);
             semUp(semgid, sh->mutex);
-            printf("Saiu  2Forming %d\n",id);
-            fflush(stdout);
             return sh->fSt.teamId;
         }
     }
@@ -264,9 +238,6 @@ static int goalieConstituteTeam (int id)                    //Late goaliesArrive
         perror ("error on the down operation for semaphore access (GL)");
         exit (EXIT_FAILURE);
     }
-
-    printf("Goalie Saiu %d\n",id);
-    fflush(stdout);
 
 
     return ret;
@@ -283,13 +254,43 @@ static int goalieConstituteTeam (int id)                    //Late goaliesArrive
 static void waitReferee (int id, int team)
 {
 
+    if (semDown (semgid, sh->mutex) == -1)  {                                                     /* enter critical region */
+        perror ("error on the up operation for semaphore access (GL)");
+        exit(EXIT_FAILURE);
+    }
+
+    if (team == 1) {
+        sh->fSt.st.goalieStat[id]=WAITING_START_1;
+    }else {
+        sh->fSt.st.goalieStat[id]=WAITING_START_2;
+    }
+    saveState(nFic, &sh->fSt);
+
+    if (semUp (semgid, sh->mutex) == -1) {                                                         /* exit critical region */
+        perror ("error on the down operation for semaphore access (GL)");
+        exit (EXIT_FAILURE);
+    }
+
     semDown(semgid, sh->playersWaitReferee);
+}
+
+/**
+ *  \brief goalie waits for referee to end match
+ *
+ *  The goalie updates its state and waits for referee to end match.
+ *  The internal state should be saved.
+ *
+ *  \param id   goalie id
+ *  \param team goalie team
+ */
+static void playUntilEnd (int id, int team)
+{
+
 
     if (semDown (semgid, sh->mutex) == -1)  {                                                     /* enter critical region */
         perror ("error on the up operation for semaphore access (GL)");
         exit (EXIT_FAILURE);
     }
-
 
     if (team == 1) {
         sh->fSt.st.goalieStat[id] = PLAYING_1;
@@ -305,36 +306,7 @@ static void waitReferee (int id, int team)
         perror ("error on the down operation for semaphore access (GL)");
         exit (EXIT_FAILURE);
     }
-    /* TODO: insert your code here */
-
-}
-
-/**
- *  \brief goalie waits for referee to end match
- *
- *  The goalie updates its state and waits for referee to end match.
- *  The internal state should be saved.
- *
- *  \param id   goalie id
- *  \param team goalie team
- */
-static void playUntilEnd (int id, int team)
-{
 
     semDown(semgid, sh->playersWaitEnd);
-
-    if (semDown (semgid, sh->mutex) == -1)  {                                                     /* enter critical region */
-        perror ("error on the up operation for semaphore access (GL)");
-        exit (EXIT_FAILURE);
-    }
-
-    /* TODO: insert your code here */
-
-    if (semUp (semgid, sh->mutex) == -1) {                                                         /* exit critical region */
-        perror ("error on the down operation for semaphore access (GL)");
-        exit (EXIT_FAILURE);
-    }
-
-    /* TODO: insert your code here */
 
 }

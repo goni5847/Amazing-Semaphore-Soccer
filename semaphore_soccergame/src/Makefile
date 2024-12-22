@@ -12,11 +12,11 @@ OBJS = sharedMemory.o semaphore.o logging.o
 
 .PHONY: all pl gl rf all_bin clean cleanall
 
-all:     clean  player      goalie       referee      main  
-pl:	     clean  player      goalie_bin   referee_bin  main 
+all:     clean  player      goalie       referee      main
+pl:	     clean  player      goalie_bin   referee_bin  main
 gl:	     clean  player_bin  goalie       referee_bin  main
-rf:	     clean  player_bin  goalie_bin   referee      main 
-all_bin: clean  player_bin  goalie_bin   referee_bin  main 
+rf:	     clean  player_bin  goalie_bin   referee      main
+all_bin: clean  player_bin  goalie_bin   referee_bin  main
 
 player:	 $(PLAYER).o $(OBJS)
 	$(CC) -o ../run/$@ $^ -lm
@@ -44,4 +44,3 @@ clean:
 
 cleanall: clean
 	rm -f ../run/$(MAIN) ../run/player ../run/goalie ../run/referee ../run/error_*
-
