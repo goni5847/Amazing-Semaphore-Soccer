@@ -15,6 +15,7 @@ OBJS = sharedMemory.o semaphore.o logging.o
 all:     clean  player      goalie       referee      main
 pl:	     clean  player      goalie_bin   referee_bin  main
 gl:	     clean  player_bin  goalie       referee_bin  main
+gl_pl:   clean  player      goalie		 referee_bin  main
 rf:	     clean  player_bin  goalie_bin   referee      main
 all_bin: clean  player_bin  goalie_bin   referee_bin  main
 

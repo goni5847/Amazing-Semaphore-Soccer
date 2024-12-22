@@ -151,7 +151,7 @@ static void arrive(int id)
         exit (EXIT_FAILURE);
     }
 
-    usleep((8000000.0*random())/(RAND_MAX+1.0)+60.0);  //8000000.0
+    usleep((200.0*random())/(RAND_MAX+1.0)+60.0);  //8000000.0
 }
 
 /**
@@ -178,7 +178,7 @@ static int goalieConstituteTeam (int id)                    //Late goaliesArrive
         exit (EXIT_FAILURE);
     }
 
-    if (sh->fSt.goaliesArrived >= 2) {    //se 1 ou 2 goalies chegaram os restantes ficarão late automaticamente
+    if (sh->fSt.goaliesArrived >= 2*NUMTEAMGOALIES ) {    //se 1 ou 2 goalies chegaram os restantes ficarão late automaticamente
         sh->fSt.st.goalieStat[id] = LATE; //alterar estado
         saveState(nFic, &sh->fSt);        //guardar estado
         semUp(semgid, sh->mutex);         //destrancar o mutex
@@ -207,10 +207,10 @@ static int goalieConstituteTeam (int id)                    //Late goaliesArrive
 
 
     if (sh->fSt.playersFree >=NUMTEAMPLAYERS ) {    //isto é o oposto do "if(sh->fSt.playersFree < NUMTEAMPLAYERS)" então talvez possa ser só else
-        sh->fSt.playersFree-=4;
+        sh->fSt.playersFree-=NUMTEAMPLAYERS;
 
         sh->fSt.st.goalieStat[id] = FORMING_TEAM;      //alterar estado
-        saveState(nFic, &sh->fSt);                      //REVIEW falta o ultimo FORMING fazer o start e acho que há muita coisa perigosa
+        saveState(nFic, &sh->fSt);                      // falta o ultimo FORMING fazer o start e acho que há muita coisa perigosa
 
         for (int i = 1;  i <= NUMTEAMPLAYERS; i++) {   //para cada jogador
             semUp(semgid, sh->playersWaitTeam);        //libertar 1 no playersWaitTeam
