@@ -151,7 +151,7 @@ static void arrive(int id)
         exit (EXIT_FAILURE);
     }
 
-    usleep((200.0*random())/(RAND_MAX+1.0)+60.0);  //8000000.0
+    usleep((50.0*random())/(RAND_MAX+1.0)+60.0);  //8000000.0
 }
 
 /**
@@ -215,11 +215,10 @@ static int goalieConstituteTeam (int id)                    //Late goaliesArrive
         for (int i = 1;  i <= NUMTEAMPLAYERS; i++) {   //para cada jogador
             semUp(semgid, sh->playersWaitTeam);        //libertar 1 no playersWaitTeam
 
-            semUp(semgid, sh->mutex);                  //destrancar o mutex?
+        }
 
-            semDown(semgid, sh->playerRegistered);     //trancar 1 no playerRegistered
-
-            semDown(semgid,sh->mutex);                 //trancar o mutex?
+        for (int i = 1;  i <= NUMTEAMPLAYERS; i++) {   //para cada jogador
+            semDown(semgid, sh->playerRegistered);
         }
 
         if(sh->fSt.teamId == 1){                       //equipa 1

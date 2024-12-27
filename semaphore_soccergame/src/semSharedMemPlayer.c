@@ -152,7 +152,7 @@ static void arrive(int id)
         exit (EXIT_FAILURE);
     }
 
-    usleep((200.0*random())/(RAND_MAX+1.0)+50.0);
+    usleep((400.0*random())/(RAND_MAX+1.0)+50.0);
 }
 
 /**
@@ -198,16 +198,14 @@ static int playerConstituteTeam (int id)
 
         for (int i = 1; i <= NUMTEAMPLAYERS -1 ; i++) {
             semUp(semgid, sh->playersWaitTeam);        //libertar 1 no playersWaitTeam
-            semUp(semgid, sh->mutex);
-            semDown(semgid, sh->playerRegistered);     //trancar 1 no playerRegistered
-            semDown(semgid,sh->mutex);
         }
 
         for (int i = 1 ; i <= NUMTEAMGOALIES; i++) {
             semUp(semgid, sh->goaliesWaitTeam);        //libertar 1 no playersWaitTeam
-            semUp(semgid, sh->mutex);
-            semDown(semgid, sh->playerRegistered);     //trancar 1 no playerRegistered
-            semDown(semgid,sh->mutex);
+        }
+
+        for (int i = 1 ; i <= NUMTEAMPLAYERS -1 ; i++) {
+            semDown(semgid, sh->playerRegistered);
         }
 
         if(sh->fSt.teamId == 1){                       //equipa 1
