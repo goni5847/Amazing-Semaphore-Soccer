@@ -151,7 +151,7 @@ static void arrive(int id)
         exit (EXIT_FAILURE);
     }
 
-    usleep((50.0*random())/(RAND_MAX+1.0)+60.0);  //8000000.0
+    usleep((200.0*random())/(RAND_MAX+1.0)+60.0);  //8000000.0
 }
 
 /**
@@ -187,7 +187,36 @@ static int goalieConstituteTeam (int id)                    //Late goaliesArrive
 
     sh->fSt.goaliesArrived+=1;                          //Nos dois casos seguintes o arrived tem de ser atualizado
 
-    if (sh->fSt.playersFree < NUMTEAMPLAYERS) {   //se ainda não estão free NUMTEAMPLAYERS
+
+    if (sh->fSt.playersFree >= NUMTEAMPLAYERS && sh->fSt.goaliesFree >=NUMTEAMGOALIES -1){
+        sh->fSt.playersFree-=NUMTEAMPLAYERS;
+        sh->fSt.goaliesFree-=NUMTEAMGOALIES -1;
+
+        sh->fSt.st.goalieStat[id] = FORMING_TEAM;
+        saveState(nFic, &sh->fSt);
+
+        for (int i = 1; i <= NUMTEAMPLAYERS; i++) {
+            semUp(semgid, sh->playersWaitTeam);        //libertar 1 no playersWaitTeam
+        }
+
+        for (int i = 1 ; i <= NUMTEAMGOALIES -1;i++) {
+            semUp(semgid, sh->goaliesWaitTeam);        //libertar 1 no playersWaitTeam
+        }
+
+        for (int i = 1 ; i <= NUMTEAMPLAYERS -1 ; i++) {
+            semDown(semgid, sh->playerRegistered);
+        }
+
+        if(sh->fSt.teamId == 1){                       //equipa 1
+            semUp(semgid, sh->refereeWaitTeams);
+            semUp(semgid, sh->mutex);
+            return (sh->fSt.teamId)++;
+        }else {
+            semUp(semgid, sh->refereeWaitTeams);
+            semUp(semgid, sh->mutex);
+            return sh->fSt.teamId;
+        }
+    }else{
         sh->fSt.goaliesFree+=1;
 
         sh->fSt.st.goalieStat[id] = WAITING_TEAM;    //alterar estado
@@ -202,33 +231,6 @@ static int goalieConstituteTeam (int id)                    //Late goaliesArrive
         }else if (sh->fSt.teamId == 2) {                //se segunda equipa
             semUp(semgid, sh->playerRegistered);
             return 2;
-        }
-    }
-
-
-    if (sh->fSt.playersFree >=NUMTEAMPLAYERS ) {    //isto é o oposto do "if(sh->fSt.playersFree < NUMTEAMPLAYERS)" então talvez possa ser só else
-        sh->fSt.playersFree-=NUMTEAMPLAYERS;
-
-        sh->fSt.st.goalieStat[id] = FORMING_TEAM;      //alterar estado
-        saveState(nFic, &sh->fSt);                      // falta o ultimo FORMING fazer o start e acho que há muita coisa perigosa
-
-        for (int i = 1;  i <= NUMTEAMPLAYERS; i++) {   //para cada jogador
-            semUp(semgid, sh->playersWaitTeam);        //libertar 1 no playersWaitTeam
-
-        }
-
-        for (int i = 1;  i <= NUMTEAMPLAYERS; i++) {   //para cada jogador
-            semDown(semgid, sh->playerRegistered);
-        }
-
-        if(sh->fSt.teamId == 1){                       //equipa 1
-            semUp(semgid, sh->refereeWaitTeams);
-            semUp(semgid, sh->mutex);
-            return (sh->fSt.teamId)++;
-        }else {
-            semUp(semgid, sh->refereeWaitTeams);
-            semUp(semgid, sh->mutex);
-            return sh->fSt.teamId;
         }
     }
 
