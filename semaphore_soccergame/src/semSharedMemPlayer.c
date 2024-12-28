@@ -226,14 +226,9 @@ static int playerConstituteTeam (int id)
         semUp (semgid, sh->mutex);                   //destrancar o mutex
         semDown(semgid, sh->playersWaitTeam);       //Leva up pelo ultimo a chegar WAITING
 
-        if (sh->fSt.teamId == 1) {                      //se primeira equipa
-            semUp(semgid, sh->playerRegistered);
-            return 1;
-        }else if (sh->fSt.teamId == 2) {                //se segunda equipa
-            semUp(semgid, sh->playerRegistered);
-            return 2;
+        semUp(semgid, sh->playerRegistered);
+        return sh->fSt.teamId;
         }
-    }
 
 
 

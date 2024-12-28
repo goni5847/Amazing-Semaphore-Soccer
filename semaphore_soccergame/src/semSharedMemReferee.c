@@ -168,8 +168,6 @@ static void waitForTeams ()
         exit (EXIT_FAILURE);
     }
 
-
-
     sh->fSt.st.refereeStat = WAITING_TEAMS;
     saveState(nFic, &sh->fSt);
 
